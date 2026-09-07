@@ -783,7 +783,7 @@ def kb_main(lang: str, premium: bool) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text=t(lang, "help"), callback_data="help", style=ButtonStyle.PRIMARY),
         ],
         [
-            InlineKeyboardButton(text=t(lang, "web_app"), url="https://reporter-rubika-production.up.railway.app", style=ButtonStyle.SUCCESS),
+            InlineKeyboardButton(text=t(lang, "web_app"), url="https://tstbotreporter1-production.up.railway.app", style=ButtonStyle.SUCCESS),
             InlineKeyboardButton(text=t(lang, "support"), callback_data="support", style=ButtonStyle.DANGER),
         ],
     ])
