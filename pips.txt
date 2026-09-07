@@ -1,0 +1,4 @@
+aiogram
+rubpy
+pycryptodome
+flask
