@@ -1308,7 +1308,7 @@ async def process_callback(callback: CallbackQuery, state: FSMContext) -> None:
             await callback.message.answer(t(lang, "sub_active", date=user["premium_until"][:10]), reply_markup=kb_menu_return(lang))
         else:
             web_app_kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="🌐 " + ("خرید از وب اپ" if lang == "fa" else "Buy via Web App"), url="https://reporter-rubika-production.up.railway.app", style=ButtonStyle.SUCCESS)],
+                [InlineKeyboardButton(text="🌐 " + ("خرید از وب اپ" if lang == "fa" else "Buy via Web App"), url="https://tstbotreporter1-production.up.railway.app", style=ButtonStyle.SUCCESS)],
                 [InlineKeyboardButton(text=t(lang, "back"), callback_data="back_menu", style=ButtonStyle.PRIMARY)],
             ])
             await callback.message.answer(
