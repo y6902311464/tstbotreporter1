@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 """
 coding by amirwebcode : telegram = @saeqehe
 pip install aiogram rubpy pycryptodome flask
@@ -783,6 +783,9 @@ def kb_main(lang: str, premium: bool) -> InlineKeyboardMarkup:
             InlineKeyboardButton(text=t(lang, "help"), callback_data="help", style=ButtonStyle.PRIMARY),
         ],
         [
+            InlineKeyboardButton(text=t(lang, "subscription"), callback_data="subscription", style=ButtonStyle.SUCCESS),
+        ],
+        [
             InlineKeyboardButton(text=t(lang, "web_app"), url="https://tstbotreporter1-production.up.railway.app", style=ButtonStyle.SUCCESS),
             InlineKeyboardButton(text=t(lang, "support"), callback_data="support", style=ButtonStyle.DANGER),
         ],
@@ -1305,7 +1308,7 @@ async def process_callback(callback: CallbackQuery, state: FSMContext) -> None:
             await callback.message.answer(t(lang, "sub_active", date=user["premium_until"][:10]), reply_markup=kb_menu_return(lang))
         else:
             web_app_kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="🌐 " + ("خرید از وب اپ" if lang == "fa" else "Buy via Web App"), url="reporter-rubika-production.up.railway.app", style=ButtonStyle.SUCCESS)],
+                [InlineKeyboardButton(text="🌐 " + ("خرید از وب اپ" if lang == "fa" else "Buy via Web App"), url="https://reporter-rubika-production.up.railway.app", style=ButtonStyle.SUCCESS)],
                 [InlineKeyboardButton(text=t(lang, "back"), callback_data="back_menu", style=ButtonStyle.PRIMARY)],
             ])
             await callback.message.answer(
@@ -1827,6 +1830,49 @@ async def receive_receipt(message: Message, state: FSMContext) -> None:
     await state.set_state(Form.main_menu)
 
 
+def _notify_admins_subscription(tg_id: int, phone: str, tx_id: str = "", note: str = "", photo_bytes: bytes = None, photo_filename: str = "") -> None:
+    text_lines = [
+        "💎 درخواست اشتراک جدید از وب‌اپ\n",
+        f"👤 کاربر: {phone}",
+        f"🆔 تلگرام: {tg_id}",
+        f"💰 مبلغ: {PREMIUM_PRICE}",
+    ]
+    if tx_id:
+        text_lines.append(f"🔢 شماره تراکنش: {tx_id}")
+    if note:
+        text_lines.append(f"📝 یادداشت: {note}")
+    text_lines.append(f"\n⏰ {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    text = "\n".join(text_lines)
+
+    approve_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [
+            InlineKeyboardButton(text="✅ تایید", callback_data=f"approve_sub_{tg_id}", style=ButtonStyle.SUCCESS),
+            InlineKeyboardButton(text="❌ رد", callback_data=f"reject_sub_{tg_id}", style=ButtonStyle.DANGER),
+        ]
+    ])
+
+    loop = asyncio.new_event_loop()
+    try:
+        bot = Bot(token=TELEGRAM_TOKEN)
+        for admin_id in ADMIN_IDS:
+            try:
+                if photo_bytes:
+                    from aiogram.types import BufferedInputFile
+                    photo_file = BufferedInputFile(photo_bytes, filename=photo_filename or "receipt.jpg")
+                    loop.run_until_complete(bot.send_photo(
+                        chat_id=admin_id,
+                        photo=photo_file,
+                        caption=text,
+                        reply_markup=approve_keyboard,
+                    ))
+                else:
+                    loop.run_until_complete(bot.send_message(chat_id=admin_id, text=text, reply_markup=approve_keyboard))
+            except Exception:
+                pass
+    finally:
+        loop.close()
+
+
 async def admin_approve_sub(callback: CallbackQuery) -> None:
     await callback.answer()
     if callback.from_user.id not in ADMIN_IDS:
@@ -1837,7 +1883,13 @@ async def admin_approve_sub(callback: CallbackQuery) -> None:
         target_id = int(data.split("_")[-1])
         set_premium(target_id, PREMIUM_MONTHS)
         log_activity("subscription", f"Subscription approved for TG: {target_id}")
-        await callback.message.edit_caption(caption=t("fa", "sub_approved", target=target_id), reply_markup=None)
+        try:
+            await callback.message.edit_caption(caption=t("fa", "sub_approved", target=target_id), reply_markup=None)
+        except Exception:
+            try:
+                await callback.message.edit_text(text=t("fa", "sub_approved", target=target_id), reply_markup=None)
+            except Exception:
+                pass
         try:
             user = get_user(target_id)
             tlang = get_lang(user)
@@ -1847,7 +1899,13 @@ async def admin_approve_sub(callback: CallbackQuery) -> None:
             pass
     elif data.startswith("reject_sub_"):
         target_id = int(data.split("_")[-1])
-        await callback.message.edit_caption(caption=t("fa", "sub_rejected", target=target_id), reply_markup=None)
+        try:
+            await callback.message.edit_caption(caption=t("fa", "sub_rejected", target=target_id), reply_markup=None)
+        except Exception:
+            try:
+                await callback.message.edit_text(text=t("fa", "sub_rejected", target=target_id), reply_markup=None)
+            except Exception:
+                pass
         try:
             user = get_user(target_id)
             tlang = get_lang(user)
@@ -2439,6 +2497,10 @@ tr:hover td{background:rgba(124,106,239,.03)}
 .submit-btn:hover{box-shadow:0 6px 24px rgba(124,106,239,.4);transform:translateY(-2px)}
 .submit-btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
 
+.file-upload-area{border:2px dashed var(--bd);border-radius:var(--radius-sm);padding:24px;text-align:center;cursor:pointer;transition:var(--transition);background:var(--s2)}
+.file-upload-area:hover{border-color:var(--ac);background:rgba(124,106,239,.05)}
+.file-upload-area.dragover{border-color:var(--ac);background:rgba(124,106,239,.08);transform:scale(1.01)}
+
 .toast{position:fixed;bottom:30px;right:30px;background:var(--s2);border:1px solid var(--bd);border-radius:var(--radius-sm);padding:16px 24px;display:flex;align-items:center;gap:12px;z-index:2000;animation:toastIn .4s ease;box-shadow:var(--shadow-lg);max-width:400px}
 .toast.hide{animation:toastOut .3s ease forwards}
 @keyframes toastIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
@@ -2671,6 +2733,21 @@ header h1{font-size:2em}
 <label class="form-label">Note (Optional)</label>
 <input type="text" class="form-input" id="payNote" placeholder="Any additional info">
 </div>
+<div class="form-group">
+<label class="form-label">Receipt Photo (Optional)</label>
+<div class="file-upload-area" id="fileUploadArea" onclick="document.getElementById('payReceipt').click()">
+<input type="file" id="payReceipt" accept="image/*" style="display:none" onchange="previewReceipt(this)">
+<div class="file-upload-placeholder" id="filePlaceholder">
+<i class="fas fa-cloud-arrow-up" style="font-size:1.8em;color:var(--t3);margin-bottom:8px"></i>
+<div style="color:var(--t2);font-size:.85em">Click or drag receipt photo here</div>
+<div style="color:var(--t3);font-size:.75em;margin-top:4px">JPG, PNG up to 5MB</div>
+</div>
+<div class="file-upload-preview" id="filePreview" style="display:none">
+<img id="previewImg" style="max-width:100%;max-height:200px;border-radius:8px">
+<div style="margin-top:8px"><button type="button" class="btn-sm btn-reject" onclick="removeReceipt(event)"><i class="fas fa-xmark"></i> Remove</button></div>
+</div>
+</div>
+</div>
 <button type="submit" class="submit-btn" id="payBtn"><i class="fas fa-paper-plane"></i> Submit Request</button>
 </form>
 </div>
@@ -2788,18 +2865,49 @@ if(name==='activity')fetchActivity();
 function showPaymentModal(){document.getElementById('paymentModal').classList.add('show')}
 function closePaymentModal(){document.getElementById('paymentModal').classList.remove('show')}
 
+function previewReceipt(input){
+const file=input.files[0];
+if(!file)return;
+if(file.size>5*1024*1024){showToast('❌','Max file size is 5MB');input.value='';return}
+const reader=new FileReader();
+reader.onload=function(e){
+document.getElementById('previewImg').src=e.target.result;
+document.getElementById('filePreview').style.display='block';
+document.getElementById('filePlaceholder').style.display='none';
+};
+reader.readAsDataURL(file);
+}
+function removeReceipt(e){
+e.stopPropagation();
+document.getElementById('payReceipt').value='';
+document.getElementById('filePreview').style.display='none';
+document.getElementById('filePlaceholder').style.display='block';
+}
+
+const fua=document.getElementById('fileUploadArea');
+if(fua){
+fua.addEventListener('dragover',e=>{e.preventDefault();fua.classList.add('dragover')});
+fua.addEventListener('dragleave',()=>fua.classList.remove('dragover'));
+fua.addEventListener('drop',e=>{e.preventDefault();fua.classList.remove('dragover');
+const file=e.dataTransfer.files[0];
+if(file&&file.type.startsWith('image/')){document.getElementById('payReceipt').files=e.dataTransfer.files;previewReceipt(document.getElementById('payReceipt'))}
+});
+}
+
 async function submitPayment(e){
 e.preventDefault();
 const btn=document.getElementById('payBtn');btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Submitting...';
 try{
-const r=await fetch('/api/subscribe',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-telegram_id:document.getElementById('payTgId').value,
-phone:document.getElementById('payPhone').value,
-tx_id:document.getElementById('payTxId').value,
-note:document.getElementById('payNote').value
-})});
+const fd=new FormData();
+fd.append('telegram_id',document.getElementById('payTgId').value);
+fd.append('phone',document.getElementById('payPhone').value);
+fd.append('tx_id',document.getElementById('payTxId').value);
+fd.append('note',document.getElementById('payNote').value);
+const fileInput=document.getElementById('payReceipt');
+if(fileInput.files[0])fd.append('receipt',fileInput.files[0]);
+const r=await fetch('/api/subscribe',{method:'POST',body:fd});
 const d=await r.json();
-if(d.ok){showToast('✅','Request submitted! Admin will review.');closePaymentModal();document.getElementById('paymentForm').reset();fetchSubs()}
+if(d.ok){showToast('✅','Request submitted! Admin will review.');closePaymentModal();document.getElementById('paymentForm').reset();removeReceipt(null);fetchSubs()}
 else{showToast('❌',d.error||'Error submitting')}
 }catch(e){showToast('❌','Network error')}
 btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> Submit Request';
@@ -2900,17 +3008,25 @@ loadAll();setInterval(()=>{fetchStats();fetchUsers()},30000);
 
     @flask_app.route("/api/subscribe", methods=["POST"])
     def api_subscribe():
-        data = flask_request.get_json(force=True)
-        tg_id = data.get("telegram_id", "").strip()
-        phone = data.get("phone", "").strip()
-        tx_id = data.get("tx_id", "").strip()
-        note = data.get("note", "").strip()
+        tg_id = flask_request.form.get("telegram_id", "").strip()
+        phone = flask_request.form.get("phone", "").strip()
+        tx_id = flask_request.form.get("tx_id", "").strip()
+        note = flask_request.form.get("note", "").strip()
         if not tg_id or not phone:
             return jsonify({"error": "telegram_id and phone are required"}), 400
         try:
             tg_id = int(tg_id)
         except ValueError:
             return jsonify({"error": "invalid telegram_id"}), 400
+
+        photo_bytes = None
+        photo_filename = ""
+        if "receipt" in flask_request.files:
+            receipt_file = flask_request.files["receipt"]
+            if receipt_file.filename:
+                photo_bytes = receipt_file.read()
+                photo_filename = receipt_file.filename
+
         with sqlite3.connect(DB_PATH) as conn:
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS pending_subscriptions (
@@ -2929,6 +3045,10 @@ loadAll();setInterval(()=>{fetchStats();fetchUsers()},30000);
                 (tg_id, phone, tx_id, note),
             )
             conn.commit()
+        try:
+            _notify_admins_subscription(tg_id, phone, tx_id, note, photo_bytes, photo_filename)
+        except Exception:
+            pass
         return jsonify({"ok": True, "message": "Request submitted"})
 
     @flask_app.route("/api/activity")
